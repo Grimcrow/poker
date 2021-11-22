@@ -3,7 +3,7 @@ defmodule PokerTest do
   doctest Poker
 
   test "highest rank hand wins" do
-    high_of_10 = ~w(2S 4C 7S 9H 10H)
+    high_of_10 = ~w(2S 4C 7S 9H TH)
     high_of_jack = ~w(3S 4S 5D 6H JH)
     winning_hand = Poker.best_hand([high_of_10, high_of_jack])
     assert winning_hand == {"high card", high_of_jack}
@@ -169,7 +169,7 @@ defmodule PokerTest do
 
   test "straight flush beats four of a kind" do
     four_5s = ~w(4S 5H 5S 5D 5C)
-    straight_flush_to_10 = ~w(7S 8S 9S 6S 10S)
+    straight_flush_to_10 = ~w(7S 8S 9S 6S TS)
     winning_hand = Poker.best_hand([four_5s, straight_flush_to_10])
     assert winning_hand == {"straight flush", straight_flush_to_10}
   end

@@ -1,5 +1,5 @@
 defmodule Poker do
-  @ranks ~w(2 3 4 5 6 7 8 9 10 J Q K A) |> Enum.with_index(2) |> Enum.into(%{})
+  @ranks ~w(2 3 4 5 6 7 8 9 T J Q K A) |> Enum.with_index(2) |> Enum.into(%{})
   @rank_mapping %{
     "01" => "high card",
     "02" => "one pair",
@@ -200,14 +200,8 @@ defmodule Poker do
   end
 
   def rank_and_suit(card) do
-    case String.starts_with?(card, "10") do
-      true ->
-        {10, String.at(card, 2)}
-
-      false ->
-        [rank, suite] = String.codepoints(card)
-        {@ranks[rank], suite}
-    end
+      [rank, suite] = String.codepoints(card)
+      {@ranks[rank], suite}
   end
 
   def order_ranks(cards),

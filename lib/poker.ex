@@ -115,7 +115,7 @@ defmodule Poker do
   end
 
   def score_hand(cards) do
-    cards = cards |> Enum.map(&rank_and_suit/1)
+    cards = cards |> Enum.map(&breakdown_to_rank_and_suit/1)
 
     cond do
       is_straight_flush?(cards) -> {"09", straight_flush(cards)}
@@ -126,61 +126,61 @@ defmodule Poker do
       is_three_of_kind?(cards) -> {"04", three_of_kind(cards)}
       is_two_pair?(cards) -> {"03", two_pair(cards)}
       is_one_pair?(cards) -> {"02", one_pair(cards)}
-      true -> {"01", cards |> sort_by_rank()}
+      true -> {"01", cards |> sort_by_rank() |> Enum.reverse()}
     end
     |> then(fn {score, cards} -> score <> order_ranks(cards) end)
   end
 
   def is_straight_flush?(cards) do
-    sequence = cards |> sort_by_rank() |> sequential?()
-    same_suite = cards |> same_suite() |> Enum.count() |> Kernel.==(1)
-    sequence && same_suite
+    sequence = cards |> sort_by_rank() |> is_sequential?()
+    group_by_same_suite = cards |> group_by_same_suite() |> Enum.count() |> Kernel.==(1)
+    sequence && group_by_same_suite
   end
 
   def straight_flush(cards), do: cards |> sort_by_rank()
 
-  def is_four_of_a_kind?(cards), do: cards |> same_rank() |> with_count(4)
+  def is_four_of_a_kind?(cards), do: cards |> group_by_same_rank() |> with_count(4)
 
   def four_of_a_kind(cards) do
-    same_rank = cards |> same_rank()
-    four = same_rank |> with_count(4) |> elem(1) |> sort_by_rank()
-    last = same_rank |> with_count(1) |> elem(1)
+    group_by_same_rank = cards |> group_by_same_rank()
+    four = group_by_same_rank |> with_count(4) |> elem(1) |> sort_by_rank()
+    last = group_by_same_rank |> with_count(1) |> elem(1)
     four ++ last
   end
 
   def is_full_house?(cards) do
-    same_rank = cards |> same_rank()
-    same_rank |> with_count(3) && same_rank |> with_count(2)
+    group_by_same_rank = cards |> group_by_same_rank()
+    group_by_same_rank |> with_count(3) && group_by_same_rank |> with_count(2)
   end
 
   def full_house(cards) do
-    same_rank = cards |> same_rank()
-    triple = same_rank |> with_count(3) |> elem(1) |> sort_by_rank()
-    pair = same_rank |> with_count(2) |> elem(1) |> sort_by_rank() |> Enum.reverse()
+    group_by_same_rank = cards |> group_by_same_rank()
+    triple = group_by_same_rank |> with_count(3) |> elem(1) |> sort_by_rank()
+    pair = group_by_same_rank |> with_count(2) |> elem(1) |> sort_by_rank() |> Enum.reverse()
     triple ++ pair
   end
 
-  def is_flush?(cards), do: cards |> same_suite() |> Enum.count() |> Kernel.==(1)
+  def is_flush?(cards), do: cards |> group_by_same_suite() |> Enum.count() |> Kernel.==(1)
   def flush(cards), do: sort_by_rank(cards)
 
-  def is_straight?(cards), do: cards |> sort_by_rank() |> sequential?()
+  def is_straight?(cards), do: cards |> sort_by_rank() |> is_sequential?()
   def straight(cards), do: cards |> sort_by_rank()
 
-  def is_three_of_kind?(cards), do: cards |> same_rank() |> with_count(3)
+  def is_three_of_kind?(cards), do: cards |> group_by_same_rank() |> with_count(3)
 
   def three_of_kind(cards) do
-    triple = cards |> same_rank() |> with_count(3) |> elem(1) |> sort_by_rank()
+    triple = cards |> group_by_same_rank() |> with_count(3) |> elem(1) |> sort_by_rank()
     other = cards |> Enum.reject(&Enum.member?(triple, &1)) |> sort_by_rank() |> Enum.reverse()
     triple ++ other
   end
 
   def is_two_pair?(cards),
-    do: cards |> same_rank() |> filter_count(2) |> Enum.count() |> Kernel.==(2)
+    do: cards |> group_by_same_rank() |> filter_count(2) |> Enum.count() |> Kernel.==(2)
 
   def two_pair(cards) do
     pairs =
       cards
-      |> same_rank()
+      |> group_by_same_rank()
       |> filter_count(2)
       |> Enum.map(&elem(&1, 1))
       |> List.flatten()
@@ -191,17 +191,17 @@ defmodule Poker do
     pairs ++ other
   end
 
-  def is_one_pair?(cards), do: cards |> same_rank() |> with_count(2)
+  def is_one_pair?(cards), do: cards |> group_by_same_rank() |> with_count(2)
 
   def one_pair(cards) do
-    pair = cards |> same_rank() |> with_count(2) |> elem(1)
+    pair = cards |> group_by_same_rank() |> with_count(2) |> elem(1)
     other = cards |> Enum.reject(&Enum.member?(pair, &1)) |> sort_by_rank() |> Enum.reverse()
     pair ++ other
   end
 
-  def rank_and_suit(card) do
-      [rank, suite] = String.codepoints(card)
-      {@ranks[rank], suite}
+  def breakdown_to_rank_and_suit(card) do
+    [rank, suite] = String.codepoints(card)
+    {@ranks[rank], suite}
   end
 
   def order_ranks(cards),
@@ -212,13 +212,13 @@ defmodule Poker do
       |> Enum.map(&String.pad_leading(&1, 2, "0"))
       |> Enum.join()
 
-  def same_suite(cards), do: cards |> Enum.group_by(fn {_, suit} -> suit end)
-  def same_rank(cards), do: cards |> Enum.group_by(fn {rank, _} -> rank end)
+  def group_by_same_suite(cards), do: cards |> Enum.group_by(fn {_, suit} -> suit end)
+  def group_by_same_rank(cards), do: cards |> Enum.group_by(fn {rank, _} -> rank end)
   def sort_by_rank(cards), do: cards |> Enum.sort_by(fn {rank, _} -> rank end)
-  def sequential?([{rank, _} | tail]), do: sequential?(tail, rank)
-  def sequential?([], _previous), do: true
-  def sequential?([{rank, _} | _tail], previous) when previous + 1 != rank, do: false
-  def sequential?([{rank, _} | tail], _previous), do: sequential?(tail, rank)
+  def is_sequential?([{rank, _} | tail]), do: is_sequential?(tail, rank)
+  def is_sequential?([], _previous), do: true
+  def is_sequential?([{rank, _} | _tail], previous) when previous + 1 != rank, do: false
+  def is_sequential?([{rank, _} | tail], _previous), do: is_sequential?(tail, rank)
   def with_count(cards, n), do: cards |> Enum.find(fn {_, cards} -> length(cards) == n end)
   def filter_count(cards, n), do: cards |> Enum.filter(fn {_, cards} -> length(cards) == n end)
 end
